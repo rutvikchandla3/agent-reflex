@@ -1,0 +1,47 @@
+{
+  "name": "agent-reflex",
+  "version": "0.1.0",
+  "description": "A ~300ms System-One safety reflex for AI coding agents. Auto-approves safe tool calls, escalates risky ones, blocks exfiltration — powered by TypeSafe's Jev.",
+  "type": "module",
+  "bin": {
+    "agent-reflex": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "dashboard",
+    "bench",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test test/*.test.js",
+    "bench": "node dist/cli.js bench",
+    "demo": "node dist/cli.js demo"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "guardrails",
+    "permissions",
+    "typesafe",
+    "jev",
+    "system-one",
+    "hooks"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3"
+  }
+}

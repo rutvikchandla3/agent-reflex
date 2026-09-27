@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>agent-reflex · live</title>
+<style>
+  :root {
+    --bg: #0a0c0f; --panel: #11141a; --panel2: #151922; --line: #1e2430; --text: #e7eaf0; --dim: #8a93a3; --faint: #5b6474;
+    --allow: #22c55e; --ask: #f5a524; --deny: #f04444; --accent: #8b8cff;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 28px; padding: 18px 28px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #0f1218, var(--bg)); }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 260px; }
+  .mark { width: 34px; height: 34px; border-radius: 9px; background: conic-gradient(from 200deg, var(--allow), var(--accent), var(--deny), var(--ask), var(--allow)); display: grid; place-items: center; }
+  .mark::after { content: "⚡"; font-size: 17px; filter: drop-shadow(0 1px 1px #0008); }
+  .brand h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  .brand p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--allow); font-weight: 600; letter-spacing: .06em; margin-left: 6px; }
+  .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--allow); box-shadow: 0 0 0 0 #22c55e88; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 7px #22c55e00; } 100% { box-shadow: 0 0 0 0 #22c55e00; } }
+  .stats { display: flex; gap: 12px; margin-left: auto; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; min-width: 128px; }
+  .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat span { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; }
+  .stat.allow b { color: var(--allow); } .stat.ask b { color: var(--ask); } .stat.deny b { color: var(--deny); } .stat.lat b { color: var(--accent); }
+  main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 0; min-height: 0; }
+  #feed { overflow-y: auto; padding: 18px 22px 40px; display: flex; flex-direction: column; gap: 10px; }
+  .empty { color: var(--faint); text-align: center; margin-top: 18vh; font-size: 14px; line-height: 1.8; }
+  .empty code { color: var(--dim); background: var(--panel); padding: 2px 8px; border-radius: 6px; }
+  .card { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 14px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 12px; padding: 13px 16px; cursor: pointer; animation: enter .45s cubic-bezier(.2,.9,.3,1.2); transition: background .15s, border-color .15s; }
+  .card:hover, .card.sel { background: var(--panel2); }
+  .card.sel { border-color: var(--c); }
+  @keyframes enter { from { opacity: 0; transform: translateY(-10px) scale(.985); } }
+  .card.allow { --c: var(--allow); } .card.ask { --c: var(--ask); } .card.deny { --c: var(--deny); } .card.defer { --c: var(--faint); }
+  .pill { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-align: center; padding: 5px 0; border-radius: 7px; color: #0a0c0f; background: var(--c); }
+  .card.deny .pill { color: #fff; }
+  .cmd { font-family: var(--mono); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .why { font-size: 12.5px; color: var(--dim); margin-top: 5px; line-height: 1.45; }
+  .meta { text-align: right; font-size: 11.5px; color: var(--faint); white-space: nowrap; line-height: 1.7; }
+  .meta .ms { font-family: var(--mono); color: var(--text); font-size: 13px; }
+  .meta .src { display: inline-block; padding: 1px 7px; border-radius: 5px; border: 1px solid var(--line); margin-left: 4px; }
+  .meta .src.jev { color: var(--accent); border-color: #8b8cff55; }
+  aside { border-left: 1px solid var(--line); background: #0d1014; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; }
+  .panel h2 { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .09em; margin: 0 0 10px; font-weight: 600; }
+  .verdict { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 10px; }
+  .verdict small { font-size: 13px; font-weight: 500; color: var(--dim); font-family: var(--mono); }
+  .detail-cmd { font-family: var(--mono); font-size: 12.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin-top: 8px; white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow: auto; }
+  .task { font-size: 12.5px; color: var(--dim); margin-top: 8px; line-height: 1.5; }
+  .task b { color: var(--text); font-weight: 600; }
+  .meter { position: relative; height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--allow) 0%, #9bd14a 30%, var(--ask) 62%, var(--deny) 100%); opacity: .9; }
+  .meter .needle { position: absolute; top: -5px; width: 4px; height: 22px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 3px #0a0c0f; transition: left .5s cubic-bezier(.2,.9,.3,1); }
+  .meter-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); margin-top: 7px; }
+  .row { display: grid; grid-template-columns: 1fr 120px 42px; align-items: center; gap: 10px; font-size: 12.5px; margin: 9px 0; }
+  .row .lbl { color: var(--dim); }
+  .row.hot .lbl { color: var(--text); font-weight: 600; }
+  .track { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 4px; transition: width .55s cubic-bezier(.2,.9,.3,1); }
+  .row .pct { font-family: var(--mono); font-size: 12px; text-align: right; color: var(--dim); }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 6px; background: #8b8cff1f; color: var(--accent); border: 1px solid #8b8cff40; }
+  form { display: flex; flex-direction: column; gap: 8px; }
+  input { font-family: var(--mono); font-size: 13px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; outline: none; }
+  input:focus { border-color: var(--accent); }
+  button { font: 600 13px var(--sans); background: var(--accent); color: #0a0c0f; border: 0; border-radius: 9px; padding: 10px; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  .hint { font-size: 11px; color: var(--faint); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <div>
+      <h1>agent-reflex <span class="live">LIVE</span></h1>
+      <p>System-One guardrail for coding agents · powered by Jev</p>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat allow"><b id="s-allow">0</b><span>auto-approved</span></div>
+    <div class="stat ask"><b id="s-ask">0</b><span>sent to you</span></div>
+    <div class="stat deny"><b id="s-deny">0</b><span>blocked</span></div>
+    <div class="stat lat"><b id="s-lat">–</b><span>median Jev latency</span></div>
+  </div>
+</header>
+<main>
+  <section id="feed"><div class="empty" id="empty">Waiting for agent tool calls…<br />Install the hook with <code>agent-reflex install claude-code</code>, or try one on the right.</div></section>
+  <aside>
+    <div class="panel" id="detail" hidden>
+      <h2>Decision</h2>
+      <div class="verdict" id="d-verdict"></div>
+      <div class="detail-cmd" id="d-cmd"></div>
+      <div class="task" id="d-task"></div>
+      <div class="why" id="d-why" style="color: var(--text); margin-top: 10px"></div>
+    </div>
+    <div class="panel" id="d-jev" hidden>
+      <h2>Jev risk score <span id="d-risk" style="float:right; color: var(--text); font-family: var(--mono); letter-spacing: 0"></span></h2>
+      <div class="meter"><div class="needle" id="d-needle"></div></div>
+      <div class="meter-labels"><span>read-only</span><span>local</span><span>routine</span><span>consequential</span><span>severe</span></div>
+      <div style="margin-top: 14px"><span class="chip" id="d-cat"></span></div>
+      <div id="d-signals" style="margin-top: 10px"></div>
+    </div>
+    <div class="panel">
+      <h2>Try an action</h2>
+      <form id="try">
+        <input id="t-task" placeholder="task (optional): fix the failing checkout test" />
+        <input id="t-cmd" placeholder="$ command the agent wants to run" required />
+        <button id="t-go">Judge with Jev</button>
+        <span class="hint">POST /v1/check · the same endpoint your agent or ADE can call</span>
+      </form>
+    </div>
+  </aside>
+</main>
+<script>
+const LABELS = {
+  destroys_data: "permanently destroys data",
+  touches_secrets: "reads or exposes secrets",
+  sends_data_out: "sends data to external server",
+  runs_untrusted_code: "runs untrusted code",
+  affects_shared: "changes shared / prod systems",
+  weakens_security: "weakens security",
+  unfamiliar_package: "unfamiliar / look-alike package",
+  removes_safeguard: "removes a security check",
+};
+const entries = [];
+let selected = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+const color = (p) => (p >= 0.6 ? "var(--deny)" : p >= 0.3 ? "var(--ask)" : "var(--allow)");
+
+function add(e) {
+  entries.push(e);
+  $("empty")?.remove();
+  const v = e.verdict;
+  const card = document.createElement("div");
+  card.className = `card ${v.decision}`;
+  const src = v.source === "jev" ? `<span class="src jev">jev</span>` : `<span class="src">${esc(v.source)}</span>`;
+  card.innerHTML = `
+    <div class="pill">${v.decision.toUpperCase()}</div>
+    <div style="min-width:0"><div class="cmd" title="${esc(e.summary)}">${esc(e.summary)}</div><div class="why">${esc(v.reason)}</div></div>
+    <div class="meta"><span class="ms">${v.latencyMs}ms</span>${src}<br />${esc(e.agent ?? "")} · ${new Date(e.ts).toLocaleTimeString()}</div>`;
+  card.onclick = () => select(e, card);
+  $("feed").prepend(card);
+  select(e, card);
+  stats();
+}
+
+function select(e, card) {
+  document.querySelectorAll(".card.sel").forEach((c) => c.classList.remove("sel"));
+  card.classList.add("sel");
+  selected = e;
+  const v = e.verdict;
+  $("detail").hidden = false;
+  const col = { allow: "var(--allow)", ask: "var(--ask)", deny: "var(--deny)" }[v.decision] ?? "var(--dim)";
+  $("d-verdict").innerHTML = `<span style="color:${col}">${v.decision.toUpperCase()}</span><small>${v.latencyMs}ms · ${esc(v.source === "jev" ? v.model ?? "jev" : v.rule ?? v.source)}</small>`;
+  $("d-cmd").textContent = e.summary;
+  $("d-task").innerHTML = e.task ? `<b>Task:</b> ${esc(e.task)}` : "";
+  $("d-why").textContent = v.reason;
+  const jev = v.source === "jev" && v.signals;
+  $("d-jev").hidden = !jev;
+  if (!jev) return;
+  $("d-risk").textContent = `${v.risk.toFixed(1)} / 4 · conf ${Math.round(v.riskConfidence * 100)}%`;
+  $("d-needle").style.left = `calc(${(v.risk / 4) * 100}% - 2px)`;
+  $("d-cat").textContent = `${v.category} · ${Math.round(v.categoryConfidence * 100)}%`;
+  const rows = Object.entries(v.signals).map(([k, p]) => [LABELS[k] ?? k, p]);
+  if (v.onTask !== undefined) rows.push(["off-task vs. user's request", 1 - v.onTask]);
+  $("d-signals").innerHTML = rows
+    .map(([l, p]) => `<div class="row ${p >= 0.6 ? "hot" : ""}"><span class="lbl">${esc(l)}</span><div class="track"><div class="fill" data-w="${Math.round(p * 100)}" style="background:${color(p)}"></div></div><span class="pct">${Math.round(p * 100)}%</span></div>`)
+    .join("");
+  requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll(".fill").forEach((f) => (f.style.width = f.dataset.w + "%"))));
+}
+
+function stats() {
+  const n = (d) => entries.filter((e) => e.verdict.decision === d).length;
+  $("s-allow").textContent = n("allow");
+  $("s-ask").textContent = n("ask");
+  $("s-deny").textContent = n("deny");
+  const lat = entries.filter((e) => e.verdict.source === "jev").map((e) => e.verdict.latencyMs).sort((a, b) => a - b);
+  $("s-lat").textContent = lat.length ? `${lat[Math.floor(lat.length / 2)]}ms` : "–";
+}
+
+const history = new URLSearchParams(location.search).get("history") ?? "0";
+const es = new EventSource(`/events?history=${history}`);
+es.onmessage = (m) => { try { add(JSON.parse(m.data)); } catch {} };
+
+$("try").onsubmit = async (ev) => {
+  ev.preventDefault();
+  $("t-go").disabled = true;
+  try {
+    await fetch("/v1/check", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agent: "dashboard", tool: "Bash", input: { command: $("t-cmd").value }, task: $("t-task").value || undefined }),
+    });
+  } finally {
+    $("t-go").disabled = false;
+  }
+};
+</script>
+</body>
+</html>
